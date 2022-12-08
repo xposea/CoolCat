@@ -12,8 +12,7 @@ config = {
     "messagingSenderId": "260373616410",
     "appId": "1:260373616410:web:193940940f8812a4edbea3",
     "measurementId": "G-R72ZQSCHDW",
-    "serviceAccount": "/Users/dylan/Library/CloudStorage/Box-Box/My Box Notes/learnDB/"
-                      "test/pythonbotdb-cad4c-firebase-adminsdk-ulnp0-4a7838cc77.json"
+    "serviceAccount": "pythonbotdb-cad4c-firebase-adminsdk-ulnp0-4a7838cc77.json"
 }
 
 db = pyrebase.initialize_app(config).database()

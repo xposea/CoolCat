@@ -2,6 +2,7 @@ import os
 
 import dotenv
 import hikari
+import lightbulb
 import Firebase as db
 
 
@@ -33,6 +34,18 @@ async def checkCode(event: hikari.DMMessageCreateEvent) -> None:
         await event.author.send("You have been verified.")
     else:
         await event.author.send("That is incorrect.")
+
+@bot.command()
+# Adds cooldown between per verification requests, per user.
+@lightbulb.add_cooldown(30, 1, lightbulb.UserBucket)
+@lightbulb.command("Verification", "Verify your netID email")
+@lightbulb.implements(lightbulb.SlashCommand) 
+async def email(test: hikari.GuildMessageCreateEvent):
+    channelID = test.get_channel
+    await test.author.send('Hello, please enter your Rutgers NetID.')
+    
+    await channelID.send("Please check your DMs!")
+    
 
 
 @bot.listen()

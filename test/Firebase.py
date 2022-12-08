@@ -19,7 +19,6 @@ config = {
 
 db = pyrebase.initialize_app(config).database()
 
-
 async def checkEmptyOrMia(author_id: int, join: bool) -> bool:
     if db.child('users').get().val() is None or f'{author_id}' not in db.child('users').get().val():
         db.child('users').child(f'{author_id}').set({
@@ -31,6 +30,43 @@ async def checkEmptyOrMia(author_id: int, join: bool) -> bool:
         return False
     return True
 
+async def sendEmail(event: hikari.DMMessageCreateEvent):
+    from email.message import EmailMessage
+    import ssl
+    import smtplib
+
+    # Declare var, FIX NETID/ver_code input parsing
+    email_sender = 'rkundoze@gmail.com'
+    email_password = 'FETCH PASSWORD FROM SECURED SOURCE'
+    email_receiver = netID + '@scarletmail.rutgers.edu'
+    ver_code = db.child('users').child(f'{event.user_id}').child('ver_code').get().val()
+    netID = db.child('users').child(f'{event.user_id}').child('netID').get().val()
+
+    subject = 'Your CoolCat Verification'
+    body = """
+    Here is your CoolCat verification code:
+
+    {ver_code}
+
+    Please send it back to the bot through its DM!
+    """.format(ver_code = "ver_code")
+
+    # Email formatting, em is the object
+    em = EmailMessage()
+    em['From'] = email_sender
+    em['To'] = email_receiver
+    em['Subject'] = subject
+    em.set_content(body)
+
+    # Establish SSL security
+    context = ssl.create_default_context()
+
+    # Send email using SSL
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465, context = context) as smtp:
+
+        smtp.login(email_sender, email_password)
+
+        smtp.sendmail(email_sender, email_receiver, em.as_string())
 # async def email() -> bool:
 
 async def checkVercode(event: hikari.DMMessageCreateEvent) -> bool:
@@ -62,4 +98,5 @@ async def place_msg(event: hikari.GuildMessageCreateEvent):
     msg_count = db.child('users').child(f'{event.author_id}').child('msg_count').get().val()
     db.child('users').child(f'{event.author_id}').update({'msg_count': msg_count + 1})
     db.child('users').child(f'{event.author_id}').child('msgs').child(f'key{msg_count}').set(event.content)
+
 

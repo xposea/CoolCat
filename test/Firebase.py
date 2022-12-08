@@ -1,3 +1,5 @@
+import random
+
 import hikari
 import pyrebase
 import json
@@ -18,29 +20,46 @@ config = {
 db = pyrebase.initialize_app(config).database()
 
 
-def checkEmptyOrMia(author_id: int, join: bool) -> bool:
-    if db.get().val() is None or f'{author_id}' not in db.child('users').get().val():
+async def checkEmptyOrMia(author_id: int, join: bool) -> bool:
+    if db.child('users').get().val() is None or f'{author_id}' not in db.child('users').get().val():
         db.child('users').child(f'{author_id}').set({
             'msg_count': 0,
+            'verified': False,
+            'ver_code': random.randrange(100000, 999999),
+            'netID': 'unknown'
         })
-        return True
-    return False
+        return False
+    return True
 
 # async def email() -> bool:
 
+async def checkVercode(event: hikari.DMMessageCreateEvent) -> bool:
+    if db.child('users').child(f'{event.author_id}').child('ver_code').get().val() == int(event.content):
+        db.child('users').child(f'{event.author_id}').update({'verified': True})
+        return True
+    return False
+
+
 async def verification(event: hikari.MemberCreateEvent):
-    if db.child('verified').get().val() is None:
-        db.child('verifiedcount').set(1)
-        db.child('verified').child('key0').set({'193736005239439360'})
-    db.update({'verifiedcount': ver_count + 1})
-    ver_count = db.child('verifiedcount').get().val()
-    db.child('verified').child(f'key{ver_count}').set(f'{event.user_id}')
+    await checkEmptyOrMia(event.user_id, True)
+    if not db.child('users').child(f'{event.user_id}').child('verified').get().val():
+        channel = await event.user.fetch_dm_channel()
+        await channel.send("You are not verified, please check your email for the verification code")
+
+    print(db.child('users').child(f'{event.user_id}').child('verified').get().val(), db.child('users').child(f'{event.user_id}').child('ver_code').get().val())
+    # if db.child('verified').get().val() is None:
+    #     db.child('verifiedcount').set(1)
+    #     db.child('verified').child('key0').set('193736005239439360')
+    # ver_count = db.child('verifiedcount').get().val()
+    # db.update({'verifiedcount': ver_count + 1})
+    # db.child('verified').child(f'key{ver_count}').set(f'{event.user_id}')
 
 
 async def place_msg(event: hikari.GuildMessageCreateEvent):
     if not event.is_human:
         return
-    checkEmptyOrMia(event.author_id, False)
+    await checkEmptyOrMia(event.author_id, False)
     msg_count = db.child('users').child(f'{event.author_id}').child('msg_count').get().val()
     db.child('users').child(f'{event.author_id}').update({'msg_count': msg_count + 1})
-    db.child('users').child(f'{event.author_id}').child('msgs').child(f'key{msg_count + 1}').set(event.content)
+    db.child('users').child(f'{event.author_id}').child('msgs').child(f'key{msg_count}').set(event.content)
+

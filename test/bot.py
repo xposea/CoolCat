@@ -1,3 +1,4 @@
+import asyncio
 import os
 import dotenv
 import hikari
@@ -18,90 +19,62 @@ async def count(event: hikari.GuildMessageCreateEvent) -> None:
 async def join(event: hikari.MemberCreateEvent) -> None:
     if event.user.is_bot:
         return
-    await verification(event)
+    await verification(event.user)
 
 
-async def verification(event: hikari.MemberCreateEvent):
-    u = event.user
-    await db.checkEmptyOrMia(event.user_id, True)
-    if not db.db.child('users').child(f'{event.user_id}').child('verified').get().val():
+async def verification(u: hikari.User):
+    await db.checkEmptyOrMia(u.id, True)
+    if not db.db.child('users').child(f'{u.id}').child('verified').get().val():
         await u.send("Are you a Rutgers Student, Alumni, or Guest?"
                      "\nPossible responses: Rutgers Student, Alumni, Guest")
-        AccType = await bot.wait_for(
-            hikari.DMMessageCreateEvent,
-            timeout=300,
-            predicate=lambda e: e.author_id == event.user_id and (e.content == 'Rutgers Student' or e.content == 'Alumni' or e.content == 'Guest'))
-        if AccType.content == 'Guest':
-            await u.send("fill")
-        else:
-            await u.send("Enter your NetID")
-        netid = await bot.wait_for(
-            hikari.DMMessageCreateEvent,
-            # How long to wait for
-            timeout=300,
-            # The event only matches if this returns True
-            predicate=lambda e: (e.author_id == event.user_id and e.content.isalnum() and len(e.content) < 10) or e.content == os.getenv('skipcode')
-        )
-        # while not netid.content.isalnum() and event.user_id == netid.author_id:
-        #     netid = await hikari.DMMessageCreateEvent
-        await u.send("You are not verified, please check your email for the verification code")
-        if netid.content != os.getenv('skipcode'):
-            await db.sendEmail(netid)
-        else:
-            await u.send(db.db.child('users').child(f'{event.user_id}').child('ver_code').get().val())
-        code = await bot.wait_for(
-            hikari.DMMessageCreateEvent,
-            # How long to wait for
-            timeout=300,
-            # The event only matches if this returns True
-            predicate=lambda e: e.author_id == event.user_id and e.content.isdigit() and len(
-                e.content) == 6 and db.checkVercode(int(e.content), e.author_id)
-        )
-        # while not code.content.isdigit() and 100000 <= int(code.content) <= 999999 and event.user_id == code.author_id \
-        #         and db.checkVercode(code):
-        #     code = await hikari.DMMessageCreateEvent
-        #     await channel.send("That is not the correct code. Please try again.")
-        await u.send("You are now verified! Have fun :)")
-        db.db.child('users').child(f'{event.user_id}').update({'netID': f'{netid.content}'})
+        try:
+            AccType = await bot.wait_for(
+                hikari.DMMessageCreateEvent,
+                timeout=300,
+                predicate=lambda e: e.author_id == u.id and (
+                            e.content == 'Rutgers Student' or e.content == 'Alumni' or e.content == 'Guest'))
+            if AccType.content == 'Guest':
+                await u.send("fill")
+            else:
+                await u.send("Enter your NetID")
+            netid = await bot.wait_for(
+                hikari.DMMessageCreateEvent,
+                # How long to wait for
+                timeout=300,
+                # The event only matches if this returns True
+                predicate=lambda e: ((db.db.child('netIDs').get().val() is None or e.content.lower() not in db.db.child('netIDs').
+                                      get().val().values()) and e.author_id == u.id and e.content.isalnum() and
+                                     len(e.content) < 10) or e.content == os.getenv('skipcode')
+            )
+
+            await u.send("You are not verified, please check your email for the verification code")
+            if netid.content != os.getenv('skipcode'):
+                await db.sendEmail(netid)
+            else:
+                await u.send(db.db.child('users').child(f'{u.id}').child('ver_code').get().val())
+            await bot.wait_for(
+                hikari.DMMessageCreateEvent,
+                # How long to wait for
+                timeout=300,
+                # The event only matches if this returns True
+                predicate=lambda e: e.author_id == u.id and e.content.isdigit() and len(
+                    e.content) == 6 and db.checkVercode(int(e.content), e.author_id)
+            )
+            await u.send("You are now verified! Have fun :)")
+            db.db.child('users').child(f'{u.id}').update({'netID': f'{netid.content.lower()}'})
+            db.db.child('netIDs').push(f'{netid.content.lower()}')
+        except asyncio.TimeoutError:
+            await u.send("Your session has timed out. Please respond \"Retry\" to retry the verification process.")
     else:
         await u.send("You are already verified! Have fun :)")
 
-    # print(db.db.child('users').child(f'{event.user_id}').child('verified').get().val(), db.db.child('users').child(f'{event.user_id}').child('ver_code').get().val())
-    # if db.child('verified').get().val() is None:
-    #     db.child('verifiedcount').set(1)
-    #     db.child('verified').child('key0').set('193736005239439360')
-    # ver_count = db.child('verifiedcount').get().val()
-    # db.update({'verifiedcount': ver_count + 1})
-    # db.child('verified').child(f'key{ver_count}').set(f'{event.user_id}')
-
-
-# @bot.listen()
-# async def checkCode(event: hikari.DMMessageCreateEvent) -> None:
-#     if not event.is_human:
-#         return
-#     if not event.content.isdigit() and 100000 <= int(event.content) <= 999999:
-#         return
-#     if await db.checkVercode(event):
-#         await event.author.send("You have been verified.")
-#     else:
-#         await event.author.send("That is incorrect.")
-#
-#
-# @bot.listen()
-# async def sendNetID(event: hikari.DMMessageCreateEvent):
-#     if not event.is_human:
-#         return
-#     if not event.content.isalnum() or len(event.content) > 10:
-#         await event.author.send("That is not a valid NetID")
-#         return
-#     db.db.child('users').child(f'{event.author_id}').child()
-
 
 @bot.listen()
-async def response(event: hikari.DMMessageCreateEvent):
+async def retryVerification(event: hikari.DMMessageCreateEvent):
     if not event.is_human:
         return None
-    return event
+    if event.content.lower() == "retry":
+        await verification(event.author)
 
 
 # @bot.listen()

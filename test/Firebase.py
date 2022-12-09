@@ -32,7 +32,6 @@ async def checkEmptyOrMia(author_id: int, join: bool) -> bool:
             'verified': False,
             'ver_code': random.randrange(100000, 999999),
             'netID': 'unknown',
-            'maybeNetID': 'unknown'
         })
         return False
     return True

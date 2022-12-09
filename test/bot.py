@@ -27,11 +27,11 @@ async def verification(event: hikari.MemberCreateEvent):
     if not db.db.child('users').child(f'{event.user_id}').child('verified').get().val():
         await u.send("Are you a Rutgers Student, Alumni, or Guest?"
                      "\nPossible responses: Rutgers Student, Alumni, Guest")
-        type = await bot.wait_for(
+        AccType = await bot.wait_for(
             hikari.DMMessageCreateEvent,
             timeout=300,
             predicate=lambda e: e.author_id == event.user_id and (e.content == 'Rutgers Student' or e.content == 'Alumni' or e.content == 'Guest'))
-        if type.content == 'Guest':
+        if AccType.content == 'Guest':
             await u.send("fill")
         else:
             await u.send("Enter your NetID")

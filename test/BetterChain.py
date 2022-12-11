@@ -109,22 +109,3 @@ async def track_message_chain(event: hikari.GuildMessageCreateEvent):
         
         await db.child('guilds').child(guild_id).child('channels').child(channel_id).child(content).add_reaction(f"\U0001F621")
     
-
-
-        
-
-    # Check if the current message is the same as the previous message
-    previous_message = db.child("channels").child(channel_id).child("previous_message").get()
-    if content == previous_message:
-        # If it is, increment the message chain count
-        message_chain_count = db.child("channels").child(channel_id).child("message_chain_count").get()
-        message_chain_count += 1
-        db.child("channels").child(channel_id).update({"message_chain_count": message_chain_count})
-    else:
-        # If it is not, reset the message chain count
-        db.child("channels").child(channel_id).update({"message_chain_count": 0})
-
-    # Update the previous message
-    db.child("channels").child(channel_id).update({"previous_message": content})
-
-#

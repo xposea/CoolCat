@@ -1,2 +1,2 @@
 # CoolCat
-To be filled
+Merged into RutgersVerifyBot
